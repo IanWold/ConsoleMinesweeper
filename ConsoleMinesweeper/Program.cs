@@ -1,22 +1,16 @@
 ﻿using static System.Console;
 
-var width = 0;
-while (width < 1 || width > 99) {
-    Write("Width: ");
-    _ = int.TryParse(ReadLine(), out width);
+void SetInput(string name, int max, out int value) {
+    do {
+        Write($"{name}: ");
+        _ = int.TryParse(ReadLine(), out value);
+    }
+    while (value < 1 || value > max);
 }
 
-var height = 0;
-while (height < 1 || height > 26) {
-    Write("Height: ");
-    _ = int.TryParse(ReadLine(), out height);
-}
-
-var bombs = 0;
-while (bombs < 1 || bombs >= width * height) {
-    Write("Bombs: ");
-    _ = int.TryParse(ReadLine(), out bombs);
-}
+SetInput("Width", 99, out var width);
+SetInput("Height", 26, out var height);
+SetInput("Bombs", width * height, out var bombs);
 
 BackgroundColor = ConsoleColor.Black;
 ForegroundColor = ConsoleColor.Gray;
