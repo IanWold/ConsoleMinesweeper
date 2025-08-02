@@ -1,58 +1,51 @@
 ﻿using static System.Console;
 
 var width = 0;
-while (width == 0)
-{
+while (width < 1 || width > 99) {
     Write("Width: ");
     _ = int.TryParse(ReadLine(), out width);
 }
 
 var height = 0;
-while (height == 0)
-{
+while (height < 1 || height > 26) {
     Write("Height: ");
     _ = int.TryParse(ReadLine(), out height);
 }
 
-var bombs = -1;
-while (bombs == -1)
-{
+var bombs = 0;
+while (bombs < 1 || bombs >= width * height) {
     Write("Bombs: ");
     _ = int.TryParse(ReadLine(), out bombs);
 }
 
+BackgroundColor = ConsoleColor.Black;
+ForegroundColor = ConsoleColor.Gray;
+
 var grid = new List<Square>();
 var random = new Random();
 
-for (int i = 0; i < bombs; i++)
-{
+for (int i = 0; i < bombs; i++) {
     int x, y = 0;
-    do
-    {
-        x = random.Next(0, width);
-        y = random.Next(0, height);
+    
+    do {
+        (x, y) = (random.Next(0, width), random.Next(0, height));
     }
     while (grid.Any(g => g.X == x && g.Y == y));
 
-    grid.Add(new()
-    {
+    grid.Add(new() {
         IsBomb = true,
         X = x,
         Y = y
     });
 }
 
-for (int x = 0; x < width; x++)
-{
-    for (int y = 0; y < height; y++)
-    {
-        if (grid.Any(g => g.X == x && g.Y == y))
-        {
+for (int x = 0; x < width; x++) {
+    for (int y = 0; y < height; y++) {
+        if (grid.Any(g => g.X == x && g.Y == y)) {
             continue;
         }
 
-        grid.Add(new()
-        {
+        grid.Add(new() {
             IsBomb = false,
             X = x,
             Y = y,
@@ -61,26 +54,11 @@ for (int x = 0; x < width; x++)
     }
 }
 
-var result = Result.Ongoing;
-
-bool Expose(Square? square)
-{
-    if (square is null)
-    {
-        return false;
-    }
-
-    if (square.IsExposed)
-    {
-        return true;
-    }
-
+bool Expose(Square square) {
     square.IsExposed = true;
 
-    if (!square.IsBomb && square.AdjacentBombs == 0)
-    {
-        foreach (var s in grid.Where(g => g.X >= square.X - 1 && g.X <= square.X + 1 && g.Y >= square.Y - 1 && g.Y <= square.Y + 1 && !g.IsExposed))
-        {
+    if (!square.IsBomb && square.AdjacentBombs == 0) {
+        foreach (var s in grid.Where(g => g.X >= square.X - 1 && g.X <= square.X + 1 && g.Y >= square.Y - 1 && g.Y <= square.Y + 1 && !g.IsExposed)) {
             Expose(s);
         }
     }
@@ -88,89 +66,90 @@ bool Expose(Square? square)
     return true;
 }
 
-void Print()
-{
+void Print() {
     Clear();
 
-    for (int y = 0; y < height; y++)
-    {
-        Write("|");
-        for (int x = 0; x < width; x++)
-        {
-            Write("---|");
-        }
-        WriteLine();
+    for (int y = 0; y < height; y++) {
+        WriteLine(
+            y == 0
+            ? $"┌{string.Concat(Enumerable.Repeat("───┬", width - 1))}───┐"
+            : $"├{string.Concat(Enumerable.Repeat("───┼", width - 1))}───┤"
+        );
 
-        Write("|");
-        for (int x = 0; x < width; x++)
-        {
-            Write(grid.Single(g => g.X == x && g.Y == y) switch
-            {
-                { IsExploded: true } => " @ |",
-                { IsExposed: true, AdjacentBombs: 0 } => "   |",
-                { IsExposed: true } g => $" {g.AdjacentBombs} |",
-                { IsFlagged: true } => " # |",
-                var g => $"{g.Name}|"
-            });
+        Write("│");
+        for (int x = 0; x < width; x++) {
+            var square = grid.Single(g => g.X == x && g.Y == y);
+            var (squareText, squareColor) = square switch {
+                { IsExploded: true } => (" @ ", ConsoleColor.White),
+                { IsExposed: true, AdjacentBombs: 0 } => ("   ", ForegroundColor),
+                { IsExposed: true } => (
+                    $" {square.AdjacentBombs} ",
+                    square.AdjacentBombs switch {
+                        1 => ConsoleColor.Blue,
+                        2 => ConsoleColor.Green,
+                        3 => ConsoleColor.Red,
+                        4 => ConsoleColor.DarkBlue,
+                        5 => ConsoleColor.Magenta,
+                        6 => ConsoleColor.Cyan,
+                        7 => ConsoleColor.DarkGreen,
+                        _ => ConsoleColor.DarkYellow
+                    }
+                ),
+                { IsFlagged: true } => (" # ", ConsoleColor.Gray),
+                var g => ($"{g.Name}", ConsoleColor.DarkGray)
+            };
+
+            ForegroundColor = squareColor;
+            Write(squareText);
+            ForegroundColor = ConsoleColor.Gray;
+
+            Write("│");
         }
         WriteLine();
     }
 
-    Write("|");
-    for (int x = 0; x < width; x++)
-    {
-        Write("---|");
-    }
+    WriteLine($"└{string.Concat(Enumerable.Repeat("───┴", width - 1))}───┘");
     WriteLine();
 }
 
-do
-{
+string FormatSquareName(string squareName) =>
+    squareName.Length == 2
+    ? $"{squareName.First()}0{squareName.Last()}"
+    : squareName;
+
+var result = (isLost: false, isNotWon: true);
+
+do {
     Print();
 
     var isMoveValid = false;
-    do
-    {
-        WriteLine();
+    do {
+        WriteLine($"Flagged {grid.Count(g => g.IsFlagged)}/{bombs}");
         Write(">: ");
-        isMoveValid = ReadLine()!.Split(' ').Select(s => s.Trim().ToLower()).Where(s => !string.IsNullOrWhiteSpace(s)).ToList() switch
-        {
-            [var squareName] => Expose(grid.SingleOrDefault(g => g.Name.ToLower() == squareName)),
-            ["f", var squareName] => (grid.SingleOrDefault(g => g.Name.ToLower() == squareName)?.IsFlagged = true) ?? false,
+        isMoveValid = ReadLine()!.Split(' ').Select(s => s.Trim().ToLower()).Where(s => !string.IsNullOrWhiteSpace(s)).ToList() switch {
+            [var squareName] when grid.SingleOrDefault(g => g.Name.ToLower() == FormatSquareName(squareName)) is Square s => Expose(s),
+            ["f", var squareName] when grid.SingleOrDefault(g => g.Name.ToLower() == FormatSquareName(squareName)) is Square s => s.IsFlagged = !s.IsFlagged,
             _ => false
         };
     }
     while (!isMoveValid);
 
-    result = (grid.Any(g => g.IsExploded), grid.Any(g => !g.IsResolved)) switch
-    {
-        (true, _) => Result.Lost,
-        (_, true) => Result.Ongoing,
-        _ => Result.Won
-    };
+    result = (grid.Any(g => g.IsExploded), grid.Any(g => !g.IsResolved));
 }
-while (result == Result.Ongoing);
+while (!result.isLost && result.isNotWon);
 
 Print();
 
-WriteLine(result switch
-{
-    Result.Won => "You won!",
-    _ => "You lost :("
-});
+WriteLine(
+    result.isLost
+    ? "You lost :("
+    : "You won!"
+);
 
 WriteLine("Press any key to continue...");
 ReadKey();
 
-enum Result
-{
-    Ongoing,
-    Won,
-    Lost
-}
-
-class Square
-{
+class Square {
     public required bool IsBomb { get; init; }
 
     public required int X { get; init; }
