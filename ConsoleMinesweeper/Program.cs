@@ -26,11 +26,7 @@ for (int i = 0; i < bombs; i++) {
     }
     while (grid.Any(g => g.X == x && g.Y == y));
 
-    grid.Add(new() {
-        IsBomb = true,
-        X = x,
-        Y = y
-    });
+    grid.Add(new(x, y, true));
 }
 
 for (int x = 0; x < width; x++) {
@@ -39,12 +35,7 @@ for (int x = 0; x < width; x++) {
             continue;
         }
 
-        grid.Add(new() {
-            IsBomb = false,
-            X = x,
-            Y = y,
-            AdjacentBombs = grid.Count(g => g.X >= x - 1 && g.X <= x + 1 && g.Y >= y - 1 && g.Y <= y + 1 && g.IsBomb)
-        });
+        grid.Add(new(x, y, false, grid.Count(g => g.X >= x - 1 && g.X <= x + 1 && g.Y >= y - 1 && g.Y <= y + 1 && g.IsBomb)));
     }
 }
 
@@ -143,21 +134,9 @@ WriteLine(
 WriteLine("Press any key to continue...");
 ReadKey();
 
-class Square {
-    public required bool IsBomb { get; init; }
-
-    public required int X { get; init; }
-
-    public required int Y { get; init; }
-
-    public int AdjacentBombs { get; init; } = 0;
-
+record Square(int X, int Y, bool IsBomb, int AdjacentBombs = 0) {
     public string Name =>
         $"{(char)('A' + Y)}{(X + 1).ToString("D2")}";
-
-    public bool IsFlagged { get; set; }
-
-    public bool IsExposed { get; set; }
 
     public bool IsResolved =>
         (IsBomb && IsFlagged)
@@ -165,4 +144,8 @@ class Square {
 
     public bool IsExploded =>
         IsBomb && IsExposed;
+
+    public bool IsFlagged { get; set; }
+
+    public bool IsExposed { get; set; }
 }
